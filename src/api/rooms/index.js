@@ -33,16 +33,11 @@ roomsRouter.get("/search", async(req,res,next) => {
 //get all rooms
 roomsRouter.get("/", async (req, res, next) => {
     try {
-        
-            const rooms = await RoomsModel.find({})
+        const rooms = await RoomsModel.find({})
             .skip(req.query.skip)
             .limit(req.query.limit)
             .sort({"createdAt": -1});
             res.send(rooms)
-        
-        
-
-        
     } catch (error) {
         next(error)
     }

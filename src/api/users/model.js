@@ -4,15 +4,21 @@ import bcrypt from "bcrypt";
 
 const usersSchema = new Schema({
     username: {type: String, required: true},
-    email: {type: String, required: true},
-    password: {type: String, required: true},
+    email: {type: String, required: function () {
+        return !this.isGuest;
+      }},
+    password: {type: String, required: function () {
+        return !this.isGuest;
+      }},
     friends: [{type: Schema.Types.ObjectId, ref: "Friend"}],
-    rooms: [{type: Schema.Types.ObjectId, ref: "Room"}]
+    rooms: [{type: Schema.Types.ObjectId, ref: "Room"}],
+    isGuest: [{type: Boolean, default: false}]
 },
-{timestamps: true})
+{timestamps: true}) 
 
 
 usersSchema.pre("save", async function(next) {
+    if (this.isGuest) return next();
     const currentUser = this;
 
     if(currentUser.isModified("password")) {

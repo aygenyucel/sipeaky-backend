@@ -115,20 +115,35 @@ usersRouter.post("/login", async(req,res,next) => {
     try {
         const {email, password}  = req.body;
         const user = await UsersModel.checkCredentials(email, password);
-        if(user){
-            const payload = {_id: user._id};
-            const JWTToken = await createJWTToken(payload);
-            //TODO: ADD REFRESH TOKEN INSTEAD OF
-            res.send({JWTToken})
-        } else {
-            next(createHttpError(404, "Credentials are not ok!"))
+        if (!user) {
+            return next(
+                createHttpError(401, "Invalid email or password")
+            );
         }
+        const payload = { _id: user._id };
+        const JWTToken = await createJWTToken(payload);
+        res.status(200).send({ JWTToken });
     } catch (error) {
         next(error)
     }
 })
 
-// usersRouter.delete("/logout", async (req,res,next) => {
-// })
+//login as guest
+usersRouter.post("/guest", async(req,res,next) => {
+    try {
+        const random = Math.random().toString(36).substring(1, 6).toUpperCase();
+        const username = `Guest_${random}`;
+
+        const guestUser = await UsersModel.create({
+            username,
+            isGuest: true
+        });
+      
+        const JWTToken = await createJWTToken({ _id: guestUser._id });
+        res.status(201).send({ JWTToken });
+    } catch (error) {
+        next(error)
+    }
+})
 
 export default usersRouter;
