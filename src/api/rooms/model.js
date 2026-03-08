@@ -5,8 +5,11 @@ const RoomsModel = new Schema({
     language: {type: String, required: true},
     level: {type: String, required: true},
     users: [{type: Schema.Types.ObjectId, ref: 'User'}],
-    creator: {type: Schema.Types.ObjectId, ref: "User"},
-    endpoint: {type: String, required: true}
+    creatorUserID: {type: Schema.Types.ObjectId, ref: 'User'},
+    hostUserID: {type: Schema.Types.ObjectId, ref: 'User'},
+    endpoint: {type: String, required: true},
+    roomStartedAt: {type: Date, default: null},
+    sessionDurationMinutes: {type: Number, default: null}
 },
 {timestamps: true})
 

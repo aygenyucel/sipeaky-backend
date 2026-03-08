@@ -2,70 +2,75 @@
 import  dotenv  from 'dotenv';
 import { disconnect } from 'mongoose';
 import { io } from './../server.js';
+import { scheduleRoomDeletion, cancelRoomDeletion } from "./roomTimeoutManager.js";
+import RoomsModel from "./../api/rooms/model.js"
 
 dotenv.config();
 
-let roomID = ''
-let peerID = ''
-let currentPeerID = ''
-let users = []
-let roomEndpoint = ''
 
-export const newConnectionHandler = socket => {
-    
-    const socketID = socket.id;
-    
-    console.log("New connection:", socketID)
-    
-    socket.emit("clientId", socketID)
-    
+export const newConnectionHandler = (socket) => {
+  // console.log("🔥 NEW SOCKET CONNECTED:", socket.id);
+  socket.emit("clientId", socket.id);
 
-    socket.on('join-room', payload => {
-        peerID = payload.peerID
-        roomID = payload.roomID
-        currentPeerID = payload.peerID
-        roomEndpoint = payload.roomEndpoint;
-        socket.join(payload.roomEndpoint);
-        users.push(payload.userID)
-        socket.to(payload.roomEndpoint).emit('user-connected', {peerID: payload.peerID, socketID: socketID, userID: payload.userID, users, roomID, roomEndpoint})
-        socket.emit("roomID", payload.roomID)     
-        socket.on("disconnect", () => {
-            console.log("Client disconnected, socketID:" , socketID, "peerID: ", payload.peerID)
-            // socket.to(roomID).emit('user-disconnect', {socketID: socketID, peerID: currentPeerID}); 
-            users.filter(user => user !== payload.userID)
-            leaveRoom(payload.peerID, payload.roomID, payload.userID)
-        
-        })
+  socket.on("join-room", async (payload) => {
+    const { peerID, userID, roomEndpoint } = payload;
 
-        //********chat messaging are *************/
-        // let chatHistory = [];
-        // socket.on("send-message", payload => {
-        //     console.log("send message triggeres, payload =>" ,payload)
-            
-        //     socket.to(roomID).emit('get-sended-message', {newMessage: payload.newMessage, chat: payload.chat})
-        // })
+    socket.data.roomEndpoint = roomEndpoint;
+    socket.data.userID = userID;
+    socket.data.peerID = peerID;
 
-        socket.on("chatMessage", (newMessage) => {
-            // console.log(text)
-            socket.emit('message', newMessage);
-            socket.to(payload.roomEndpoint).emit('message', newMessage)
-            socket.to(payload.roomEndpoint).emit('new-message-alert', newMessage)
-            
-        }
-        )
+    socket.join(roomEndpoint);
+    cancelRoomDeletion(roomEndpoint);
 
-        
+    socket.to(roomEndpoint).emit("user-connected", {
+      peerID,
+      socketID: socket.id,
+      userID,
+      roomEndpoint,
+    });
+  });
 
-        socket.on("kick-user", payload =>
-            socket.to(payload.roomEndpoint).emit("you-kicked", {userID: payload.userID})
-        )
-        
-    })
-    const leaveRoom =(peerID, roomID,userID) => {
-        //todo: filter updated rooms
-        socket.to(roomEndpoint).emit('user-disconnected', {peerID: peerID, roomID, userID: userID})
-        
+  socket.on("disconnect", async () => {
+    const roomEndpoint = socket.data.roomEndpoint;
+    const userID = socket.data.userID;
+    const peerID = socket.data.peerID;
+
+    console.log("DISCONNECT:", socket.id, userID, "room:", roomEndpoint);
+
+    if (!roomEndpoint) return;
+
+    await RoomsModel.updateOne(
+      { endpoint: roomEndpoint },
+      { $pull: { users: userID } }
+    );
+
+    socket.to(roomEndpoint).emit("user-disconnected", {
+      peerID,
+      userID,
+      roomEndpoint,
+    });
+
+    const room = io.sockets.adapter.rooms.get(roomEndpoint);
+    const size = room ? room.size : 0;
+
+    // console.log("👥 Remaining sockets in room:", size);
+
+    if (size === 0) {
+      // console.log(" Room empty, scheduling deletion:", roomEndpoint);
+      scheduleRoomDeletion(roomEndpoint);
     }
+  });
 
-    
-}
+  socket.on("chatMessage", (newMessage) => {
+    const roomEndpoint = socket.data.roomEndpoint;
+    if (!roomEndpoint) return;
+
+    socket.emit("message", newMessage);
+    socket.to(roomEndpoint).emit("message", newMessage);
+    socket.to(roomEndpoint).emit("new-message-alert", newMessage);
+  });
+
+  socket.on("kick-user", (payload) => {
+    socket.to(payload.roomEndpoint).emit("you-kicked", { userID: payload.userID });
+  });
+};

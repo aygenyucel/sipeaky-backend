@@ -131,7 +131,7 @@ usersRouter.post("/login", async(req,res,next) => {
 //login as guest
 usersRouter.post("/guest", async(req,res,next) => {
     try {
-        const random = Math.random().toString(36).substring(1, 6).toUpperCase();
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
         const username = `Guest_${random}`;
 
         const guestUser = await UsersModel.create({
