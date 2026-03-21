@@ -21,6 +21,18 @@ export const newConnectionHandler = (socket) => {
     socket.join(roomEndpoint);
     cancelRoomDeletion(roomEndpoint);
 
+    await RoomsModel.updateOne(
+      { endpoint: roomEndpoint },
+      { $addToSet: { users: userID } }
+    );
+    const updatedRoom = await RoomsModel.findOne({ endpoint: roomEndpoint });
+
+    io.emit("room-users-updated", {
+      roomID: updatedRoom._id.toString(),
+      users: updatedRoom.users
+    });
+
+
     socket.to(roomEndpoint).emit("user-connected", {
       peerID,
       socketID: socket.id,
@@ -34,8 +46,6 @@ export const newConnectionHandler = (socket) => {
     const userID = socket.data.userID;
     const peerID = socket.data.peerID;
 
-    console.log("DISCONNECT:", socket.id, userID, "room:", roomEndpoint);
-
     if (!roomEndpoint) return;
 
     await RoomsModel.updateOne(
@@ -43,19 +53,22 @@ export const newConnectionHandler = (socket) => {
       { $pull: { users: userID } }
     );
 
+    const updatedRoom = await RoomsModel.findOne({ endpoint: roomEndpoint });
     socket.to(roomEndpoint).emit("user-disconnected", {
       peerID,
       userID,
       roomEndpoint,
+    })
+
+    io.emit("room-users-updated", {
+      roomID: updatedRoom._id.toString(),
+      users: updatedRoom.users
     });
 
     const room = io.sockets.adapter.rooms.get(roomEndpoint);
     const size = room ? room.size : 0;
 
-    // console.log("👥 Remaining sockets in room:", size);
-
     if (size === 0) {
-      // console.log(" Room empty, scheduling deletion:", roomEndpoint);
       scheduleRoomDeletion(roomEndpoint);
     }
   });
@@ -78,5 +91,5 @@ export const newConnectionHandler = (socket) => {
         userID,
         isCameraOn
     })
-})
+  })
 };
