@@ -9,7 +9,6 @@ dotenv.config();
 
 
 export const newConnectionHandler = (socket) => {
-  // console.log("🔥 NEW SOCKET CONNECTED:", socket.id);
   socket.emit("clientId", socket.id);
 
   socket.on("join-room", async (payload) => {
@@ -73,4 +72,11 @@ export const newConnectionHandler = (socket) => {
   socket.on("kick-user", (payload) => {
     socket.to(payload.roomEndpoint).emit("you-kicked", { userID: payload.userID });
   });
+
+  socket.on("camera-toggled", ({ userID, roomEndpoint, isCameraOn }) => {
+    socket.to(roomEndpoint).emit("camera-toggled", {
+        userID,
+        isCameraOn
+    })
+})
 };
