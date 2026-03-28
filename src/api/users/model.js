@@ -3,16 +3,14 @@ import { model, Schema } from "mongoose";
 import bcrypt from "bcrypt";
 
 const usersSchema = new Schema({
-    username: {type: String, required: true},
-    email: {type: String, required: function () {
-        return !this.isGuest;
-      }},
+    username: {type: String, required: true, unique: true},
+    email: {type: String},
     password: {type: String, required: function () {
         return !this.isGuest;
       }},
     friends: [{type: Schema.Types.ObjectId, ref: "Friend"}],
     rooms: [{type: Schema.Types.ObjectId, ref: "Room"}],
-    isGuest: [{type: Boolean, default: false}]
+    isGuest: {type: Boolean, default: false}
 },
 {timestamps: true}) 
 
@@ -30,9 +28,9 @@ usersSchema.pre("save", async function(next) {
 })
 
 
-usersSchema.static("checkCredentials", async function (email, password) {
+usersSchema.static("checkCredentials", async function (username, password) {
     const UserModel = this;
-    const user = await UserModel.findOne({email});
+    const user = await UserModel.findOne({username});
     if(user) {
         const passwordMatch = await bcrypt.compare(password, user.password);
         if(passwordMatch) {
@@ -45,19 +43,9 @@ usersSchema.static("checkCredentials", async function (email, password) {
     }
 })
 
-usersSchema.static("checkEmail", async function (email) {
-    const UserModel = this
-    const user = await UserModel.findOne({email: email})
-    if(user){
-        return email;
-    } else {
-        return null
-    }
-})
-
 usersSchema.static("checkUsername", async function (username) {
     const UserModel = this
-    const user = await UserModel.findOne({username: username})
+    const user = await UserModel.findOne({username})
     if(user) {
         return username;
     } else {

@@ -89,21 +89,16 @@ usersRouter.delete("/:userId", async (req,res,next) => {
 //user registiration
 usersRouter.post("/signup", async(req,res,next) => {
     try {
-        const {email, username} = req.body;
-        const user = await UsersModel.checkEmail(email)
+        const {username} = req.body;
+        const user = await UsersModel.checkUsername(username)
         if(user) {
-            next(createHttpError(409, `The user with this email already exist!`))
+            next(createHttpError(409, `Username already exists`))
         } else {
-            const user = await UsersModel.checkUsername(username)
-            if(user) {
-                next(createHttpError(409, `The user with this username already exist!`))
-            } else {
-                const newUser = new UsersModel(req.body);
-                const {_id} = await newUser.save();
-                const payload = {_id}
-                const JWTToken = await createJWTToken(payload);
-                res.status(201).send({JWTToken})
-            }
+            const newUser = new UsersModel(req.body);
+            const {_id} = await newUser.save();
+            const payload = {_id}
+            const JWTToken = await createJWTToken(payload);
+            res.status(201).send({JWTToken})
         }
     } catch (error) {
         next(error)
@@ -113,11 +108,11 @@ usersRouter.post("/signup", async(req,res,next) => {
 //user login
 usersRouter.post("/login", async(req,res,next) => {
     try {
-        const {email, password}  = req.body;
-        const user = await UsersModel.checkCredentials(email, password);
+        const {username, password}  = req.body;
+        const user = await UsersModel.checkCredentials(username, password);
         if (!user) {
             return next(
-                createHttpError(401, "Invalid email or password")
+                createHttpError(401, "Invalid username or password")
             );
         }
         const payload = { _id: user._id };
