@@ -2,7 +2,7 @@
 import  dotenv  from 'dotenv';
 import { disconnect } from 'mongoose';
 import { io } from './../server.js';
-import { scheduleRoomDeletion, cancelRoomDeletion } from "./roomTimeoutManager.js";
+import { scheduleRoomDeletion, cancelRoomDeletion } from "./roomTimeOutManager.js";
 import RoomsModel from "./../api/rooms/model.js"
 
 dotenv.config();
